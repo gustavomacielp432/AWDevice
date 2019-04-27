@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 MyTask task = new MyTask();
                 //String urlApi = "https://blockchain.info/ticker";
-                String urlApi = "http://192.168.43.130:8080/ArduinoWeb/desligar";
+                String urlApi = "http://192.168.43.130:8080/ArduinoWeb/desligar";//alterar ip
                 //String cep = "01310100";
                 //String urlCep = "https://viacep.com.br/ws/" + cep + "/json/";
                 task.execute(urlApi);
