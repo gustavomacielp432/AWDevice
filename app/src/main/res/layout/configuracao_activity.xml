@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="33dp"
+        android:layout_marginLeft="33dp"
+        android:layout_marginTop="32dp"
+        android:text="Dados de Conexão"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Dados de Conexão" />
+
+    <EditText
+        android:id="@+id/etIp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginRight="16dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        android:text="000.000.00.000"
+        app:layout_constraintBottom_toBottomOf="@+id/etPorta"
+        app:layout_constraintEnd_toStartOf="@+id/textView3"
+        app:layout_constraintStart_toStartOf="@+id/textView"
+        app:layout_constraintTop_toTopOf="@+id/etPorta" />
+
+    <EditText
+        android:id="@+id/etPorta"
+        android:layout_width="67dp"
+        android:layout_height="45dp"
+        android:layout_marginTop="64dp"
+        android:layout_marginBottom="64dp"
+        android:ems="10"
+        android:inputType="number|textPersonName"
+        android:phoneNumber="false"
+        app:layout_constraintBottom_toTopOf="@+id/btTestarConexao"
+        app:layout_constraintEnd_toEndOf="@+id/textView3"
+        app:layout_constraintStart_toEndOf="@+id/textView3"
+        app:layout_constraintTop_toTopOf="@+id/textView2" />
+
+    <Button
+        android:id="@+id/btTestarConexao"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginLeft="24dp"
+        android:layout_marginTop="205dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginRight="24dp"
+        android:text="Testar Conexão"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btSalvar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginLeft="32dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginRight="32dp"
+        android:text="Salvar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btTestarConexao" />
+
+    <TextView
+        android:id="@+id/tvTesteConexao"
+        android:layout_width="0dp"
+        android:layout_height="22dp"
+        android:layout_marginTop="19dp"
+        android:layout_marginEnd="3dp"
+        android:layout_marginRight="3dp"
+        android:layout_marginBottom="23dp"
+        app:layout_constraintBottom_toTopOf="@+id/btTestarConexao"
+        app:layout_constraintEnd_toEndOf="@+id/etPorta"
+        app:layout_constraintStart_toStartOf="@+id/etIp"
+        app:layout_constraintTop_toBottomOf="@+id/etIp" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:text="IP"
+        android:textSize="14sp"
+        app:layout_constraintBottom_toTopOf="@+id/etIp"
+        app:layout_constraintStart_toStartOf="@+id/textView2"
+        tools:text="IP" />
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="101dp"
+        android:layout_marginRight="101dp"
+        android:layout_marginBottom="4dp"
+        android:text="Porta"
+        android:textSize="14sp"
+        app:layout_constraintBottom_toTopOf="@+id/etPorta"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:text="Porta" />
+</android.support.constraint.ConstraintLayout>

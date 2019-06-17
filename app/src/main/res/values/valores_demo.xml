@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="statusFechado">
+        {
+	      \"Resposta\": 0
+		}
+</string>
+
+    <string name="statusAberto">
+        {
+	      \"Resposta\": 1
+		}
+</string>
+
+    <string name="statusTempo">
+        {
+	      \"Resposta\": 1
+		}
+</string>
+
+</resources>
