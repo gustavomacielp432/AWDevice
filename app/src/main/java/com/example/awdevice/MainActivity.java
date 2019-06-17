@@ -7,14 +7,16 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class MainActivity extends AppCompatActivity implements BuscarStatusJanela.AsyncResponse, AlterarStatusJanela.AsyncResponse {
+public class MainActivity extends AppCompatActivity implements BuscarStatusJanela.AsyncResponse, AlterarStatusJanela.AsyncResponse, Conexao.AsyncResponse {
 
     private Button botaoRecuperar;
     private Button botaoConfiguracoes;
+    private ProgressBar progressBar;
 
     private static String ip = "";
     private static String porta = "";
@@ -22,19 +24,11 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
 
     private static boolean OPCAO_USUARIO;
     private boolean configPreenchidas = false;
+    private boolean carregado = false;
 
     private Service service;
-    //private BuscarStatusJanela buscarStatus;
-    private AlterarStatusJanela alterarStatusJanelaClass;
     private Componentes componentes;
     private ConfiguracaoActivity configuracao;
-
-    private String sensorProximidade = "";
-    private String sensorChuva = "";
-    private String statusAtualJanela = "";
-    private String retornoStatusJanela = "";
-
-    String janela = "aberto";
 
 
     @Override
@@ -48,33 +42,23 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
         getSupportActionBar().setDisplayUseLogoEnabled(true);
 
         componentes = new Componentes();
-        //buscarStatus = new BuscarStatusJanela(this);
         configuracao = new ConfiguracaoActivity();
         service = new Service();
 
         botaoRecuperar = findViewById(R.id.buttonRecuperar);
         botaoConfiguracoes = findViewById(R.id.btConfiguracao);
+        progressBar = findViewById(R.id.progressBar);
+        progressBar.setVisibility(View.INVISIBLE);
         botaoConfiguracoes.setBackground(getResources().getDrawable(R.drawable.conf));
 
-        if (configuracao.fileExists(getApplicationContext(), "config.txt")) {
+        if (configuracao.fileExists(getApplicationContext(), configuracao.getFileName())) {
             String[] dados = configuracao.recuperarDadosConexao(getApplicationContext());
             ip = dados[0];
             porta = dados[1];
-            isConectado = true;
-        } else {
-            botaoRecuperar.setText("Faça a configuração para visualizar");
-        }
-
-        if (isConectado) {
-
-            try {
-                buscarStatusComponentes();
-
-            } catch (NullPointerException e) {
-                e.printStackTrace();
-            }
+            executarTaskTestarConexao();
 
         } else {
+            botaoRecuperar.setText("INDISPONÍVEL");
             buildAlerta("É necessário configurar o IP e a PORTA");
         }
 
@@ -84,22 +68,12 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
 
                 if (isConectado) {
 
-                    sensorProximidade = componentes.getSensorProximidade();
-                    sensorChuva = componentes.getSensorChuva();
-                    statusAtualJanela = componentes.getStatusJanela();
-
+                    botaoRecuperar.setVisibility(View.INVISIBLE);
+                    progressBar.setVisibility(View.VISIBLE);
+                    buscarStatusComponentes();
+                    botaoRecuperar.setVisibility(View.INVISIBLE);
+                    progressBar.setVisibility(View.VISIBLE);
                     alteraStatusJanela();
-/*
-
-                    if(janela.equals("aberto")){
-                        botaoRecuperar.setBackground(getResources().getDrawable(R.drawable.fechar));
-                        janela = "fechada";
-                    }else{
-                        botaoRecuperar.setBackground(getResources().getDrawable(R.drawable.abrir));
-                        janela = "aberto";
-                    }
-
-*/
 
                 } else {
                     buildAlerta("É necessário configurar o IP e a PORTA");
@@ -128,6 +102,34 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
         new BuscarStatusJanela(this).execute(url);
     }
 
+    public void alteraStatusJanela() {
+
+        if (componentes != null) {
+            if (componentes.getSensorProximidade().equals("perto")) {
+                // SE = 1, AÇÃO: FECHAR
+                // SE = 0, AÇÃO: ABRIR
+                if (componentes.getStatusJanela().equals("1")) {
+                    buildAlerta("Há algo no caminho e não foi possível fechar a janela!");
+                }
+            } else if (componentes.getSensorChuva().equals("1")) {
+                if (componentes.getStatusJanela().equals("0")) {
+                    buildAlertaConfirmacao("Está chovendo. Tem certeza que quer abrir a janela?");
+                } else if (componentes.getStatusJanela().equals("1")) {
+                    executarTaskFecharJanela();
+                }
+            } else {
+                if (componentes.getStatusJanela().equals("0")) {
+                    executarTaskAbrirJanela();
+                } else if (componentes.getStatusJanela().equals("1")) {
+                    executarTaskFecharJanela();
+                } else {
+                    buildAlerta("Ocorreu um erro. Janela: " + componentes.getStatusJanela() + ", " +
+                            "Ultrassom: " + componentes.getSensorProximidade() + ", Chuva: " + componentes.getSensorChuva());
+                }
+            }
+        }
+    }
+
     @Override
     public void processFinishBuscarStatus(String output) {
 
@@ -136,12 +138,10 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
             componentes.setSensorProximidade(jsonObject.getString("ultrasom"));
             componentes.setSensorChuva(jsonObject.getString("chuva"));
             componentes.setStatusJanela(jsonObject.getString("janela"));
+            alteraStatusBotao();
+            progressBar.setVisibility(View.INVISIBLE);
+            botaoRecuperar.setVisibility(View.VISIBLE);
 
-            if (componentes.getStatusJanela().equals("0")) {
-                alteraStatusBotao();
-            } else if (componentes.getStatusJanela().equals("1")) {
-                alteraStatusBotao();
-            }
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -153,48 +153,73 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
         try {
             JSONObject jsonObject = new JSONObject(output);
             componentes.setStatusJanela(jsonObject.getString("retorno"));
+            alteraStatusBotao();
+            progressBar.setVisibility(View.INVISIBLE);
+            botaoRecuperar.setVisibility(View.VISIBLE);
         } catch (JSONException e) {
             e.printStackTrace();
         }
 
     }
 
-    public void alteraStatusJanela() {
+    @Override
+    public void processFinishConexao(String output) {
 
-        componentes.setSensorProximidade("longe");
+        String objetoTesteConexao = "";
 
-        // JANELA RETORNANDO: ABERTA
+        if (output.equals("NULO")) {
+            isConectado = false;
+            botaoRecuperar.setText("INDISPONÍVEL");
+            buildAlerta("Conexão não realizada. IP ou PORTA inválidos.");
 
-        if(componentes != null){
-            if(componentes.getSensorProximidade().equals("perto")){
+        } else {
 
-                // SE = 1, AÇÃO: FECHAR
-                // SE = 0, AÇÃO: ABRIR
-                if(componentes.getStatusJanela().equals("1")){
-                    buildAlerta("Há algo no caminho e não foi possível fechar a janela!");
-                }
-            }else if(componentes.getSensorChuva().equals("1")){
-                if(componentes.getStatusJanela().equals("0")){
-                    buildAlertaConfirmacao("Está chovendo. Tem certeza que quer abrir a janela?");
-                    if(OPCAO_USUARIO){
-                        new AlterarStatusJanela(this).execute(service.pathAbrir(ip, porta), componentes.getStatusJanela());
-                        alteraStatusBotao();
-                    }
-                }else if(componentes.getStatusJanela().equals("1")){
-                    new AlterarStatusJanela(this).execute(service.pathFechar(ip, porta), componentes.getStatusJanela());
-                    alteraStatusBotao();
+            try {
+                JSONObject jsonObject = new JSONObject(output);
+                objetoTesteConexao = jsonObject.getString("retorno");
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            if (objetoTesteConexao.equals("200")) {
+                isConectado = true;
+                carregado = true;
+
+                try {
+                    botaoRecuperar.setVisibility(View.INVISIBLE);
+                    progressBar.setVisibility(View.VISIBLE);
+                    buscarStatusComponentes();
+
+                } catch (NullPointerException e) {
+                    e.printStackTrace();
                 }
             }else{
-                if(componentes.getStatusJanela().equals("0")){
-                    new AlterarStatusJanela(this).execute(service.pathAbrir(ip, porta), componentes.getStatusJanela());
-                    alteraStatusBotao();
-                }else if(componentes.getStatusJanela().equals("1")){
-                    new AlterarStatusJanela(this).execute(service.pathFechar(ip, porta), componentes.getStatusJanela());
-                }else{
-                    buildAlerta("Ocorreu um erro. Janela: " + componentes.getStatusJanela() + ", " +
-                            "Ultrassom: " + componentes.getSensorProximidade() + ", Chuva: " + componentes.getSensorChuva());
-                }
+                buildAlerta("Falha na conexão|");
+                botaoRecuperar.setText("INDISPONÍVEL");
             }
+        }
+    }
+
+    public void executarTaskAbrirJanela() {
+        new AlterarStatusJanela(this).execute(service.pathAbrir(ip, porta), componentes.getStatusJanela());
+    }
+
+    public void executarTaskFecharJanela() {
+        new AlterarStatusJanela(this).execute(service.pathFechar(ip, porta), componentes.getStatusJanela());
+    }
+
+    public void executarTaskTestarConexao() {
+        new Conexao(this).execute(service.pathStatusConexao(ip, porta));
+    }
+
+    public void alteraStatusBotao() {
+        if (componentes.getStatusJanela().equals("0")) {
+            botaoRecuperar.setBackground(getResources().getDrawable(R.drawable.abrir));
+        } else if (componentes.getStatusJanela().equals("1")) {
+            botaoRecuperar.setBackground(getResources().getDrawable(R.drawable.fechar));
+        } else {
+            botaoRecuperar.setText("INDISPONÍVEL");
         }
     }
 
@@ -208,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
                 "SIM",
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
-                        OPCAO_USUARIO = true;
+                        executarTaskAbrirJanela();
                         dialog.cancel();
 
                     }
@@ -244,13 +269,5 @@ public class MainActivity extends AppCompatActivity implements BuscarStatusJanel
 
         AlertDialog alert11 = alerta.create();
         alert11.show();
-    }
-
-    public void alteraStatusBotao(){
-        if (componentes.getStatusJanela().equals("0")) {
-            botaoRecuperar.setBackground(getResources().getDrawable(R.drawable.abrir));
-        } else if (componentes.getStatusJanela().equals("1")) {
-            botaoRecuperar.setBackground(getResources().getDrawable(R.drawable.fechar));
-        }
     }
 }

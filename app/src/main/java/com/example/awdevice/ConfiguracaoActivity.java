@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -25,13 +24,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 
 import android.support.v7.app.AppCompatActivity;
 
-public class ConfiguracaoActivity extends AppCompatActivity {
+public class ConfiguracaoActivity extends AppCompatActivity implements Conexao.AsyncResponse {
 
     private EditText etIp;
     private EditText etPorta;
@@ -42,9 +38,12 @@ public class ConfiguracaoActivity extends AppCompatActivity {
     private String ip = "";
     private String porta = "";
 
+    Service service;
+
     private static final String FILE_NAME = "config.txt";
 
     private static boolean isConectado = false;
+    private static boolean conexaoTestada = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,15 +65,16 @@ public class ConfiguracaoActivity extends AppCompatActivity {
         btTestarConexao.setBackground(getResources().getDrawable(R.drawable.testar));
         btSalvar.setText("");
         btSalvar.setBackground(getResources().getDrawable(R.drawable.salvar));
+        service = new Service();
 
 
-        if (fileExists(getApplicationContext(), "config.txt")) {
+        if (fileExists(getApplicationContext(), FILE_NAME)) {
             String[] dados = recuperarDadosConexao(getApplicationContext());
             etIp.setText(dados[0]);
             etPorta.setText(dados[1]);
             ip = dados[0];
             porta = dados[1];
-            isConectado = true;
+            testarConexao();
         }
 
 
@@ -119,7 +119,10 @@ public class ConfiguracaoActivity extends AppCompatActivity {
                 if (!ip.isEmpty() && !porta.isEmpty()) {
                     ip = etIp.getText().toString();
                     porta = etPorta.getText().toString();
-                    testarConexaao();
+                    testarConexao();
+                    if(isConectado){
+
+                    }
 
                 } else {
                     buildAlerta("Preencha todos os campos antes de fazer a conexão.");
@@ -134,8 +137,12 @@ public class ConfiguracaoActivity extends AppCompatActivity {
                     if (isConectado) {
                         onBackPressed();
 
-                    } else {
-                        buildAlerta("Dados de conexão inválidos!");
+                    } else{
+                        if(!conexaoTestada){
+                            buildAlerta("É preciso testar a conexão antes de salvar!");
+                        }else{
+                            buildAlerta("Dados de conexão inválidos!");
+                        }
                     }
 
                 } else {
@@ -145,11 +152,43 @@ public class ConfiguracaoActivity extends AppCompatActivity {
         });
     }
 
-    private void testarConexaao() {
-        Service service = new Service();
-        String path = service.pathStatusConexao(ip, porta);
-        TaskTestarConexao task = new TaskTestarConexao();
-        task.execute(path);
+    public void testarConexao() {
+        new Conexao(this).execute(service.pathStatusConexao(ip, porta));
+    }
+
+    @Override
+    public void processFinishConexao(String output) {
+
+        String objetoTesteConexao = "";
+
+        if (output.equals("NULO")) {
+            tvTesteConexao.setVisibility(View.INVISIBLE);
+            isConectado = false;
+            buildAlerta("Conexão não realizada. IP ou PORTA inválidos.");
+
+        } else {
+
+            try {
+                JSONObject jsonObject = new JSONObject(output);
+                objetoTesteConexao = jsonObject.getString("retorno");
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            if (objetoTesteConexao.equals("200")) {
+                tvTesteConexao.setVisibility(View.VISIBLE);
+                tvTesteConexao.setTextColor(getResources().getColor(R.color.ColorTesteConexao));
+                tvTesteConexao.setText("Conexão realizada com sucesso!");
+                isConectado = true;
+                conexaoTestada = true;
+                String dadosConexao = ip + "\n" + porta;
+                salvarDadosConexao(dadosConexao, getApplicationContext());
+
+            }else{
+                buildAlerta("Falha na conexão|");
+            }
+        }
     }
 
     public String getIp() {
@@ -160,89 +199,8 @@ public class ConfiguracaoActivity extends AppCompatActivity {
         return porta;
     }
 
-    class TaskTestarConexao extends AsyncTask<String, Void, String> {
+    public String getFileName(){return FILE_NAME; }
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-        }
-
-        @Override
-        protected String doInBackground(String... strings) {
-
-            String stringUrl = strings[0];
-            InputStream inputStream = null;
-            InputStreamReader inputStreamReader = null;
-            StringBuffer buffer = null;
-            boolean isNulo = false;
-
-            try {
-
-                URL url = new URL(stringUrl);
-                HttpURLConnection conexao = (HttpURLConnection) url.openConnection();
-
-                // Recupera os dados em Bytes
-                inputStream = conexao.getInputStream();
-
-                //inputStreamReader lê os dados em Bytes e decodifica para caracteres
-                inputStreamReader = new InputStreamReader(inputStream);
-
-                //Objeto utilizado para leitura dos caracteres do InpuStreamReader
-                BufferedReader reader = new BufferedReader(inputStreamReader);
-                buffer = new StringBuffer();
-                String linha = "";
-
-                while ((linha = reader.readLine()) != null) {
-                    buffer.append(linha);
-                }
-
-            } catch (MalformedURLException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                isNulo = true;
-                e.printStackTrace();
-            }
-
-            if (isNulo) {
-                return "NULO";
-            } else {
-                return buffer.toString();
-            }
-
-        }
-
-        @Override
-        protected void onPostExecute(String resultado) {
-            super.onPostExecute(resultado);
-
-            String objetoTesteConexao = "";
-
-            if (resultado.equals("NULO")) {
-                tvTesteConexao.setVisibility(View.INVISIBLE);
-                isConectado = false;
-                buildAlertaConexaoFalhou("Conexão não realizada. IP ou PORTA inválidos.");
-
-            } else {
-
-                try {
-                    JSONObject jsonObject = new JSONObject(resultado);
-                    objetoTesteConexao = jsonObject.getString("retorno");
-
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-                if (objetoTesteConexao.equals("200")) {
-                    tvTesteConexao.setTextColor(getResources().getColor(R.color.ColorTesteConexao));
-                    tvTesteConexao.setText("Conexão realizada com sucesso!");
-                    isConectado = true;
-                    String dadosConexao = ip + "\n" + porta;
-                    salvarDadosConexao(dadosConexao, getApplicationContext());
-
-                }
-            }
-        }
-    }
 
     private void makeToast(CharSequence mensagem) {
         Toast toast = Toast.makeText(getApplicationContext(), mensagem, Toast.LENGTH_SHORT);
@@ -251,7 +209,7 @@ public class ConfiguracaoActivity extends AppCompatActivity {
 
     private void salvarDadosConexao(String data, Context context) {
         try {
-            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(context.openFileOutput("config.txt", Context.MODE_PRIVATE));
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(context.openFileOutput(FILE_NAME, Context.MODE_PRIVATE));
             outputStreamWriter.write(data);
             outputStreamWriter.close();
         } catch (IOException e) {
@@ -262,7 +220,7 @@ public class ConfiguracaoActivity extends AppCompatActivity {
     public String[] recuperarDadosConexao(Context context) {
         String[] camposConexao = new String[2];
         try {
-            InputStream inputStream = context.openFileInput("config.txt");
+            InputStream inputStream = context.openFileInput(FILE_NAME);
 
             if (inputStream != null) {
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
@@ -356,22 +314,4 @@ public class ConfiguracaoActivity extends AppCompatActivity {
         alert11.show();
     }
 
-    private void buildAlertaConexaoFalhou(String mensagem) {
-        AlertDialog.Builder alerta = new AlertDialog.Builder(ConfiguracaoActivity.this);
-
-        alerta.setMessage(mensagem);
-        alerta.setCancelable(true);
-
-        alerta.setPositiveButton(
-                "OK",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                        recreate();
-                    }
-                });
-
-        AlertDialog alert11 = alerta.create();
-        alert11.show();
-    }
 }

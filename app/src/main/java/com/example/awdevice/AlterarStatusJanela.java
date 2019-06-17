@@ -4,6 +4,7 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -116,6 +117,7 @@ public class AlterarStatusJanela extends AsyncTask<String, Void, String> {
 
         if (resultado != null) {
             delegate.processFinishAlterarStatus(resultado);
+            Log.i("********", resultado);
 
         }
 
